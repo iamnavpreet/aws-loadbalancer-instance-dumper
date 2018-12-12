@@ -38,8 +38,9 @@ class LoadBalancer():
         pass
 
     def to_screen(self):
-        print(self.__dict__)
-
+        objo_data = self.__dict__
+        print_string = "{:15}  | ELB -> {:30} | DNS -> {} ".format(objo_data["type"],objo_data["elbname"],objo_data["dnsname"])
+        logging.info(print_string)
 
 def search_target_groups(clientelbv2):
     tgs_data = dict()
@@ -120,8 +121,7 @@ def search_elbv2_lbs(elbv2_client, instance_listing=False):
     return load_balancer_list
 
 
-def generate(list_lb_v1, list_lb_v2,type):
-
+def generate(list_lb_v1, list_lb_v2, type):
     if type == "listing":
         for elbo in list_lb_v1:
             elbo.to_screen()
@@ -162,7 +162,7 @@ if __name__ == '__main__':
             lb_v2_client = boto3.client("elbv2", region_name=args.region)
             list_lb_v2 = search_elbv2_lbs(lb_v2_client, args.listelbvsinstance)
             list_lb_v1 = search_elbv1_lbs(lb_v1_client, args.listelbvsinstance)
-            generate(list_lb_v1, list_lb_v2,"listing")
+            generate(list_lb_v1, list_lb_v2, "listing")
         elif args.listelbvsinstance:
             logging.info("Listing ELB'S with Instance Data...")
             lb_v1_client = boto3.client("elb", region_name=args.region)
