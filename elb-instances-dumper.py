@@ -39,7 +39,10 @@ class LoadBalancer():
 
     def to_screen(self):
         objo_data = self.__dict__
-        print_string = "{:15}  | ELB -> {:30} | DNS -> {} ".format(objo_data["type"],objo_data["elbname"],objo_data["dnsname"])
+        print_string = "{:15}  | ELB -> {:30}|{:2} Instances | DNS -> {} ".format(objo_data["type"],
+                                                                                   objo_data["elbname"],
+                                                                                   len(objo_data["instances"]),
+                                                                                   objo_data["dnsname"])
         logging.info(print_string)
 
 def search_target_groups(clientelbv2):
