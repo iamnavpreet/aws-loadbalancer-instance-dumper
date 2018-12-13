@@ -2,7 +2,8 @@ import boto3
 import logging
 import argparse
 from botocore.exceptions import ClientError
-
+from pprint import pprint
+import json
 
 def cli_args():
     """
@@ -14,8 +15,9 @@ def cli_args():
     parser = argparse.ArgumentParser(description="Dump List of ELB's in JSON / CSV")
     parser.add_argument("-listelbs", help="List All Glacier", action="store_true")
     parser.add_argument("-listelbvsinstance", help="List With Instance Details", action="store_true")
-    parser.add_argument("-json", help="Provide Vault Name", action="store")
-    parser.add_argument("-csv", help="Delete All items", action="store_true")
+    parser.add_argument("-json", help="Display JSON", action="store")
+    parser.add_argument("-csv", help="Display CSV", action="store_true")
+    parser.add_argument("-file", help="Write to file", action="store")
     parser.add_argument("-region", help="List All Glacier", required=True, action="store")
     parser.add_argument("-profile", help="AWS Profile for credentails", action="store")
 
@@ -31,18 +33,26 @@ class LoadBalancer():
         self.__dict__.update(**kwargs)
 
     def to_json(self):
-        for key in self.__dict__:
-            print(key)
+        return self.__dict__
 
     def to_csv(self):
+        #TODO generate CSV data
+        # TODO resurn list only
         pass
 
-    def to_screen(self):
+    def to_screen(self,extended_listing):
         objo_data = self.__dict__
-        print_string = "{:15}  | ELB -> {:30}|{:2} Instances | DNS -> {} ".format(objo_data["type"],
+        if extended_listing:
+            #TODO -- think on extended listing
+            print_string = "{:14}  | ELB -> {}| DNS -> {} | ".format(objo_data["type"],
+                                                                                   objo_data["elbname"],
+                                                                                   objo_data["dnsname"])
+        else:
+            print_string = "{:15}  | ELB -> {:30}|{:2} Instances | DNS -> {} ".format(objo_data["type"],
                                                                                    objo_data["elbname"],
                                                                                    len(objo_data["instances"]),
                                                                                    objo_data["dnsname"])
+
         logging.info(print_string)
 
 def search_target_groups(clientelbv2):
@@ -124,28 +134,44 @@ def search_elbv2_lbs(elbv2_client, instance_listing=False):
     return load_balancer_list
 
 
-def generate(list_lb_v1, list_lb_v2, type):
+def generate(list_lb_v1, list_lb_v2, type,file_name="",extended_listing=False):
     if type == "listing":
         for elbo in list_lb_v1:
-            elbo.to_screen()
+            elbo.to_screen(extended_listing)
 
         for elbo in list_lb_v2:
-            elbo.to_screen()
+            elbo.to_screen(extended_listing)
 
     if type == "json":
+        json_data = list()
         for elbo in list_lb_v1:
-            elbo.to_json()
+            json_data.append(elbo.to_json())
 
         for elbo in list_lb_v2:
-            elbo.to_json()
+            json_data.append(elbo.to_json())
+
+        if file_name:
+            with open(file_name, 'a') as the_file:
+                the_file.write(json.dumps(json_data))
+            pass
+        else:
+            pprint(json_data)
 
     if type == "csv":
+
+        csv_list = list()
         for elbo in list_lb_v1:
-            elbo.to_csv()
+            csv_list.extend(elbo.to_csv())
 
         for elbo in list_lb_v2:
-            elbo.to_csv()
+            csv_list.extend(elbo.to_csv())
 
+        if file_name:
+            #TODO - Write to file
+            pass
+        else:
+            for line in csv_list:
+                logging.info(line)
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(message)s', level=logging.INFO, datefmt='%H:%M:%S')
@@ -165,14 +191,14 @@ if __name__ == '__main__':
             lb_v2_client = boto3.client("elbv2", region_name=args.region)
             list_lb_v2 = search_elbv2_lbs(lb_v2_client, args.listelbvsinstance)
             list_lb_v1 = search_elbv1_lbs(lb_v1_client, args.listelbvsinstance)
-            generate(list_lb_v1, list_lb_v2, "listing")
+            generate(list_lb_v1, list_lb_v2, "listing",args.listelbvsinstance)
         elif args.listelbvsinstance:
             logging.info("Listing ELB'S with Instance Data...")
             lb_v1_client = boto3.client("elb", region_name=args.region)
             lb_v2_client = boto3.client("elbv2", region_name=args.region)
             list_lb_v2 = search_elbv2_lbs(lb_v2_client, args.listelbvsinstance)
             list_lb_v1 = search_elbv1_lbs(lb_v1_client, args.listelbvsinstance)
-            generate(list_lb_v1, list_lb_v2, "listing")
+            generate(list_lb_v1, list_lb_v2, "listing",args.listelbvsinstance)
         else:
             logging.info("Invalid command.. Kindly use help")
             exit(-1)
